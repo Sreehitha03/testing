@@ -1,11 +1,11 @@
-import os
-import git
 from flask import Flask, request, jsonify
+import git
+import os
 
 app = Flask(__name__)
 
-# Path where your repo will be cloned
-REPO_PATH = "C:/Users/kadav/Desktop/coding/AI AGENT"
+# Set the repository path (ensure this is correct for your system)
+REPO_PATH = r"C:\Users\kadav\Desktop\coding\AI AGENT"
 
 @app.route('/webhook', methods=['POST'])
 def github_webhook():
@@ -15,38 +15,34 @@ def github_webhook():
     if not data:
         return jsonify({"error": "No data received"}), 400
 
-    repo_name = data.get("repository", {}).get("full_name")
+    repo = data.get("repository", {}).get("full_name")
     commits = data.get("commits", [])
-    print(f"📦 Repo: {repo_name}")
 
-    # Clone the repo if not already cloned
-    if not os.path.exists(REPO_PATH):
-        print("Cloning repository...")
-        git.Repo.clone_from(f'https://github.com/{repo_name}.git', REPO_PATH)
-
-    # Track modified files
-    modified_files = []
+    print(f"📦 Repo: {repo}")
     for commit in commits:
         print(f"➡️ Commit message: {commit['message']}")
         print(f"📝 Modified files: {commit['modified']}")
-        modified_files.extend(commit.get('modified', []))
 
-    if modified_files:
-        # Stage and commit modified files
-        repo = git.Repo(REPO_PATH)
-        repo.git.add(modified_files)
+    try:
+        # Initialize the repo and check if there are changes
+        repo_path = REPO_PATH  # Path to the local Git repository
+        repo = git.Repo(repo_path)
+
+        # Stage the files for commit
+        repo.git.add('app.py')  # Add the modified file(s) to staging area
+
+        # Commit the changes
         repo.git.commit('-m', 'Auto-commit: Changes detected via webhook')
 
-        # Push the changes back to GitHub
-        origin = repo.remote(name='origin')
+        # Push the commit to GitHub
+        origin = repo.remotes.origin
         origin.push()
 
-        print("✅ Changes committed and pushed to GitHub.")
-    else:
-        print("🔄 No files modified.")
+        return jsonify({"status": "success", "message": "Commit pushed to GitHub."}), 200
 
-    return jsonify({"status": "received"}), 200
-
+    except Exception as e:
+        print(f"⚠️ Error: {e}")
+        return jsonify({"error": "Failed to commit changes."}), 500
 
 if __name__ == '__main__':
     app.run(port=5000)
