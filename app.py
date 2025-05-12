@@ -31,14 +31,18 @@ def github_webhook():
         # Stage the files for commit
         repo.git.add('app.py')  # Add the modified file(s) to staging area
 
-        # Commit the changes
-        repo.git.commit('-m', 'Auto-commit: Changes detected via webhook')
+        # Check if there are changes to commit
+        if repo.is_dirty():
+            # Commit the changes
+            repo.git.commit('-m', 'Auto-commit: Changes detected via webhook')
 
-        # Push the commit to GitHub
-        origin = repo.remotes.origin
-        origin.push()
+            # Push the commit to GitHub
+            origin = repo.remotes.origin
+            origin.push()
 
-        return jsonify({"status": "success", "message": "Commit pushed to GitHub."}), 200
+            return jsonify({"status": "success", "message": "Commit pushed to GitHub."}), 200
+        else:
+            return jsonify({"status": "no changes", "message": "No changes to commit."}), 200
 
     except Exception as e:
         print(f"⚠️ Error: {e}")
